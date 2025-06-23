@@ -5,6 +5,7 @@ const pc = new RTCPeerConnection({
 });
 const socket = io();
 
+// Joinボタンの機能
 globalThis.onClickBtn = async () => {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: true,
@@ -24,11 +25,12 @@ globalThis.onClickBtn = async () => {
   video.play();
   videoContainer.appendChild(video);
 
-  const buttonElem = document.createElement('button');
-  buttonElem.textContent = "ゲーム開始";
-  buttonElem.classList.add("start-button");
-  buttonElem.addEventListener('click', onGameStart);
-  videoContainer.appendChild(buttonElem);
+  // 「ゲーム開始」ボタンを
+  const startButton = document.createElement('button');
+  startButton.textContent = "ゲーム開始";
+  startButton.classList.add("start-button");
+  startButton.addEventListener('click', onGameStart);
+  videoContainer.appendChild(startButton);
 
   pc.createOffer().then((desc) => {
     pc.setLocalDescription(desc);
@@ -69,11 +71,24 @@ socket
   .on('answer', (desc) => pc.setRemoteDescription(desc))
   .on('ice', (candidate) => pc.addIceCandidate(candidate));
 
-function onGameStart() {
+let gameStarted;
+
+// ゲーム開始ボタンを押したら実行
+const onGameStart = () => {
+  gameStarted = true;
   const targetPhrase = "せーの";
   const repeatCount = 3;
   let currentRepeat = 0;
 
+  const endButton = document.querySelector('.start-button');
+  if (endButton) {
+    endButton.textContent = "ゲーム終了";
+    endButton.classList.remove("start-button");
+    endButton.classList.add("end-button");
+    endButton.addEventListener('click', onGameEnd);
+  }
+
+  // 三秒カウントダウンする音声を流す
   const playCountdown = (src) => {
     return new Promise((resolve, reject) => {
       const audio = new Audio(src);
@@ -83,16 +98,7 @@ function onGameStart() {
     });
   };
 
-  const resultDisplay = document.createElement("div");
-  resultDisplay.style.position = "absolute";
-  resultDisplay.style.top = "10px";
-  resultDisplay.style.left = "50%";
-  resultDisplay.style.transform = "translateX(-50%)";
-  resultDisplay.style.fontSize = "48px";
-  resultDisplay.style.color = "white";
-  resultDisplay.style.zIndex = 10;
-  document.body.appendChild(resultDisplay);
-
+  // 音声を3秒間収録
   const recordAudio = async (stream, durationMs = 3000) => {
     const mediaRecorder = new MediaRecorder(stream);
     const chunks = [];
@@ -110,23 +116,39 @@ function onGameStart() {
     });
   };
 
-  const recognizeAudio = async (audioBlob) => {
+  // Web Speech APIから、音声が一致しているかどうかを論理値を返される
+  const matchJudge = async (audioBlob) => {
     // ここは音声認識APIにPOSTするなどの処理に置き換えてください
     // 今はダミーで「せーの」が返ってくるようにしています
     return "せーの";
   };
 
+  // 結果の⭕️❌のhtml要素を作る
+  // スタイルをCSSファイルに書く
+  const resultDisplay = document.createElement("div");
+  resultDisplay.style.position = "absolute";
+  resultDisplay.style.top = "10px";
+  resultDisplay.style.left = "50%";
+  resultDisplay.style.transform = "translateX(-50%)";
+  resultDisplay.style.fontSize = "48px";
+  resultDisplay.style.color = "white";
+  resultDisplay.style.zIndex = 10;
+  resultDisplay.classList.add('result-display');
+  document.body.appendChild(resultDisplay);
+
+  // 一回のゲームでの動作
   const loopGame = async () => {
-    if (currentRepeat >= repeatCount) return;
+    if (currentRepeat >= repeatCount || !gameStarted) return;
+
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       await playCountdown('countdown.mp3'); // ✅ カウントダウン音声が終わるのを待つ
 
       const recordedAudio = await recordAudio(stream);
-      const recognizedText = await recognizeAudio(recordedAudio);
+      const ifMatch = await matchJudge(recordedAudio);
 
-      if (recognizedText === targetPhrase) {
+      if (ifMatch) {
         resultDisplay.textContent = "○";
         resultDisplay.style.color = "lime";
       } else {
@@ -143,3 +165,34 @@ function onGameStart() {
 
   loopGame();
 }
+
+const onGameEnd = () => {
+  gameStarted = false;
+
+  // ゲーム終了ボタンをゲーム開始ボタンに戻す
+  const endButton = document.querySelector('.end-button');
+  if (endButton) {
+    endButton.textContent = "ゲーム開始";
+    endButton.classList.remove("end-button");
+    endButton.classList.add("start-button");
+
+    // 以前追加した onGameEnd のリスナーを削除しておく（再登録を防ぐ）
+    endButton.removeEventListener('click', onGameEnd);
+
+    // 再び onGameStart を登録（必要に応じて）
+    endButton.addEventListener('click', onGameStart);
+  }
+
+  // ⭕️❌ の表示を消す（必要であれば）
+  const resultDisplay = document.querySelector('result-display');
+  if (resultDisplay) {
+    resultDisplay.remove();
+  }
+}
+
+/**
+ * 今の課題
+ * 丸と罰を消す
+ * お互いにゲーム開始ボタンを押してから、ゲームを開始
+ * ゲーム終了ボタンに変える
+ */
