@@ -6,11 +6,10 @@
   <body style="display: grid; grid-template-columns: 1fr 1fr;">
     <button style="position: absolute; z-index: 1;" onClick="onClickBtn()">Join</button>
     <button style="position: absolute; z-index: 1; top: 50px;" onClick="startVoiceRecognition()">音声認識開始</button>
-    <button style="position: absolute; z-index: 1; top: 90px;" onClick="stopVoiceRecognition()">音声認識停止</button>
-    <div id="voiceResults" style="position: absolute; z-index: 1; top: 130px; background: white; padding: 10px; max-width: 300px;">
+    <div id="voiceResults" style="position: absolute; z-index: 1; top: 90px; background: white; padding: 10px; max-width: 300px;">
       <h3>音声認識結果</h3>
       <div id="finalResults"></div>
-      <div id="interimResults" style="color: gray;"></div>
+      <!-- <div id="interimResults" style="color: gray;"></div> -->
     </div>
   </body>
 </html>
