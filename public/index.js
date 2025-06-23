@@ -5,6 +5,12 @@ const pc = new RTCPeerConnection({
 });
 const socket = io();
 
+socket.on('voice', (audioPath) => {
+  const audio = new Audio(audioPath);
+  audio.play();
+});
+
+
 globalThis.onClickBtn = async () => {
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: true,
@@ -59,3 +65,36 @@ socket
   })
   .on('answer', (desc) => pc.setRemoteDescription(desc))
   .on('ice', (candidate) => pc.addIceCandidate(candidate));
+
+//追加
+const recognition = new webkitSpeechRecognition(); // Chrome用
+recognition.lang = 'ja-JP';
+recognition.continuous = false;
+
+recognition.onresult = function (event) {
+  const text = event.results[0][0].transcript;
+  console.log('認識結果:', text);
+  socket.emit('transcript', text); // サーバへ送信
+};
+
+globalThis.startRecognition = () => {
+  recognition.start();
+};
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.lang = 'ja-JP';     // 日本語
+recognition.interimResults = false;
+recognition.continuous = false;
+
+recognition.onresult = (event) => {
+  const transcript = event.results[0][0].transcript;
+  console.log('認識結果:', transcript);
+  document.getElementById('result').textContent = transcript;
+};
+
+recognition.onerror = (event) => {
+  console.error('音声認識エラー:', event.error);
+};
+
+function startRecognition() {
+  recognition.start();
+}
