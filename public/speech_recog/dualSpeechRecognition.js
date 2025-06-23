@@ -27,9 +27,6 @@ class DualSpeechRecognition {
   }
 
   setupLocalRecognition() {
-    // 元のonFinalResultメソッドをオーバーライド
-    const originalOnFinalResult = this.localRecognition.onFinalResult.bind(this.localRecognition);
-    
     this.localRecognition.onFinalResult = (transcript) => {
       // ローカル表示
       this.displayLocalResult(transcript);
@@ -40,9 +37,6 @@ class DualSpeechRecognition {
         playerId: this.socket.id,
         timestamp: Date.now()
       });
-      
-      // 元の処理も実行（既存のfinalResultsに表示）
-      originalOnFinalResult(transcript);
     };
 
     // 音声認識終了時の処理
@@ -130,11 +124,9 @@ class DualSpeechRecognition {
   clearResults() {
     const localDiv = document.getElementById('localResults');
     const remoteDiv = document.getElementById('remoteResults');
-    const finalDiv = document.getElementById('finalResults');
     
     if (localDiv) localDiv.innerHTML = '';
     if (remoteDiv) remoteDiv.innerHTML = '';
-    if (finalDiv) finalDiv.innerHTML = '';
   }
 }
 
