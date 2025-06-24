@@ -7,7 +7,7 @@ class VoiceRecognition {
   setupRecognition() {
     this.recognition.lang = 'ja-JP';
     this.recognition.continuous = false; // 短い音声で停止
-    this.recognition.interimResults = true;
+    this.recognition.interimResults = false;
     this.recognition.maxAlternatives = 1; // 代替候補を1つに制限
     
     // 無音検出の時間を短縮（ブラウザがサポートしている場合）
@@ -75,13 +75,13 @@ class VoiceRecognition {
     }
   }
 
-  onInterimResult(transcript) {
-    console.log('途中結果:', transcript);
-    const interimResultsDiv = document.getElementById('interimResults');
-    if (interimResultsDiv) {
-      interimResultsDiv.innerHTML = `<p>認識中: ${transcript}</p>`;
-    }
-  }
+  // onInterimResult(transcript) {
+  //   console.log('途中結果:', transcript);
+  //   const interimResultsDiv = document.getElementById('interimResults');
+  //   if (interimResultsDiv) {
+  //     interimResultsDiv.innerHTML = `<p>認識中: ${transcript}</p>`;
+  //   }
+  // }
 }
 
 // グローバル変数として音声認識インスタンスを作成
