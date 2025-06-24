@@ -37,7 +37,7 @@ globalThis.onClickBtn = async () => {
   startButton.addEventListener('click', onGameStart);
   videoContainer.appendChild(startButton);
 
-  // オファーを送信
+  // Joinを押したら、'offer'イベントを送信
   pc.createOffer().then((desc) => {
     pc.setLocalDescription(desc);
     socket.emit('offer', desc);
@@ -74,33 +74,47 @@ pc.addEventListener('icecandidate', ({ candidate }) => {
 });
 
 // 相手クライアントからイベントを受信する
-socket
-// 相手のSDPを受信し('offer'イベント)相手として設定、自分のSDPを設定し相手に送信('answer'イベント)
-.on('offer', (desc) => {
+socket.on('offer', (desc) => { // 相手のSDPを受信し('offer'イベント)相手として設定、自分のSDPを設定し相手に送信('answer'イベント)
   pc.setRemoteDescription(desc);
   pc.createAnswer().then((desc) => {
     pc.setLocalDescription(desc);
     socket.emit('answer', desc);
   });
 })
-// こちらがオファーを出した側である場合、'answer'が返ってくるので（上のsocket.emit('answer'...)で'answer'イベントが返ってくるということ）
-.on('answer', (desc) => pc.setRemoteDescription(desc))
-// 'ice'イベントを受信したら、通信経路として設定
-.on('ice', (candidate) => pc.addIceCandidate(candidate));
+.on('answer', (desc) => pc.setRemoteDescription(desc)) // こちらがオファーを出した側である場合、'answer'が返ってくるので（上のsocket.emit('answer'...)で'answer'イベントが返ってくるということ）
+.on('ice', (candidate) => pc.addIceCandidate(candidate)); // 'ice'イベントを受信したら、通信経路として設定
+
+let gameStarted;
+let isReady = false;
+
+socket.on('both-ready', () => {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) {
+    startButton.disabled = false;
+  }
+});
+
+socket.on('not-ready', () => {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) {
+    startButton.disabled = true;
+  }
+});
 
 // シグナリングサーバからゲーム開始イベントを受信
 socket.on('start-game', () => {
   gameStarted = true;
-  canStartGame = true;
   runGameLoop();
 });
 
-let gameStarted;
-let isReady = false;
-let canStartGame = false;
+socket.on('force-end-game', () => {
+  gameStarted = false;
+  resetGameUI();
+});
 
 // ゲーム開始ボタンを押したら実行
 const onGameStart = () => {
+  startButton.disabled = true;
   const startButton = document.querySelector('.start-button');
   if (startButton) {
     startButton.textContent = "ゲーム終了";
@@ -178,29 +192,23 @@ const runGameLoop = () => {
 
 const onGameEnd = () => {
   gameStarted = false;
+  socket.emit('end-game'); // 相手にも終了を通知
+  resetGameUI();
+};
 
-  // ゲーム終了ボタンをゲーム開始ボタンに戻す
+function resetGameUI() {
   const endButton = document.querySelector('.end-button');
   if (endButton) {
     endButton.textContent = "ゲーム開始";
     endButton.classList.remove("end-button");
     endButton.classList.add("start-button");
-
-    // 以前追加した onGameEnd のリスナーを削除しておく（再登録を防ぐ）
-    endButton.removeEventListener('click', onGameEnd);
-
-    // 再び onGameStart を登録（必要に応じて）
-    endButton.addEventListener('click', onGameStart);
+    endButton.removeEventListener("click", onGameEnd);
+    endButton.addEventListener("click", onGameStart);
   }
 
-  // ⭕️❌ の表示を消す（必要であれば）
-  const resultDisplay = document.querySelector('result-display');
+  const resultDisplay = document.querySelector(".result-display");
   if (resultDisplay) {
     resultDisplay.remove();
   }
 }
 
-/**
- * 丸と罰を消す
- * お互いにゲーム開始ボタンを押してから、ゲームを開
- */
