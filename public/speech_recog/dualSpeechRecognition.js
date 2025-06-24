@@ -13,10 +13,11 @@ class DualSpeechRecognition {
       this.displayRemoteResult(data.transcript, data.playerId);
     });
 
-    // 相手が音声認識を開始したことを受信
+    // 相手が音声認識を開始したことを受信 - 自動的に自分も開始
     this.socket.on('remote-start-recognition', () => {
-      console.log('相手が音声認識を開始しました');
+      console.log('相手が音声認識を開始しました - 自動的に参加します');
       this.showRemoteStatus('相手が音声認識中...');
+      this.autoStartRecognition(); // 自動的に音声認識を開始
     });
 
     // 相手が音声認識を停止したことを受信
@@ -65,6 +66,24 @@ class DualSpeechRecognition {
     // 相手にも音声認識開始を通知
     this.socket.emit('local-start-recognition');
     console.log('デュアル音声認識を開始しました');
+  }
+
+  // 相手が開始した時に自動的に開始する
+  autoStartRecognition() {
+    if (this.isRecognitionActive) {
+      console.log('既に音声認識が実行中です');
+      return;
+    }
+
+    // 音声認識結果エリアを表示
+    const speechResults = document.getElementById('speechResults');
+    if (speechResults) {
+      speechResults.style.display = 'block';
+    }
+
+    this.isRecognitionActive = true;
+    this.localRecognition.start();
+    console.log('自動でデュアル音声認識に参加しました');
   }
 
   stopRecognition() {
