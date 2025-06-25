@@ -3,28 +3,52 @@ import '/socket.io/socket.io.js';
 const pc = new RTCPeerConnection({
   iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
 });
+
 const socket = io();
 
+// Joinボタンの機能
 globalThis.onClickBtn = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: true,
-  });
-  for (const track of stream.getTracks()) {
-    pc.addTrack(track);
-  }
-  const video = document.createElement('video');
-  video.playsInline = true;
-  video.muted = true;
-  video.style.width = '100%';
-  video.srcObject = stream;
-  video.play();
-  document.body.appendChild(video);
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('お使いのブラウザはカメラ・マイクをサポートしていないか、HTTPSが必要です。');
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    });
 
-  pc.createOffer().then((desc) => {
-    pc.setLocalDescription(desc);
-    socket.emit('offer', desc);
-  });
+    for (const track of stream.getTracks()) {
+      pc.addTrack(track);
+    }
+
+    const videoContainer = document.querySelector('.video-container');
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.muted = true;
+    video.style.width = '100%';
+    video.srcObject = stream;
+    video.play();
+    videoContainer.appendChild(video);
+
+    const startButton = document.createElement('button');
+    startButton.textContent = "ゲーム開始";
+    startButton.classList.add("start-button");
+    startButton.disabled = true;
+    startButton.addEventListener('click', onGameStart);
+    videoContainer.appendChild(startButton);
+
+    pc.createOffer().then((desc) => {
+      pc.setLocalDescription(desc);
+      socket.emit('offer', desc);
+    });
+
+    socket.emit('ready');
+  } catch (error) {
+    console.error('カメラ・マイクの取得に失敗しました:', error);
+    alert('カメラ・マイクの取得に失敗しました。\n' +
+      'HTTPSで接続されているか、カメラ・マイクの使用を許可しているか確認してください。\n' +
+      'エラー: ' + error.message);
+  }
 };
 
 pc.addEventListener('track', ({ track }) => {
@@ -43,6 +67,7 @@ pc.addEventListener('track', ({ track }) => {
     audio.play();
   }
 });
+
 pc.addEventListener('icecandidate', ({ candidate }) => {
   if (candidate) {
     socket.emit('ice', candidate);
@@ -60,15 +85,231 @@ socket
   .on('answer', (desc) => pc.setRemoteDescription(desc))
   .on('ice', (candidate) => pc.addIceCandidate(candidate));
 
-// デュアル音声認識の初期化
-let dualSpeechRecognition;
+let gameStarted = false;
 
-// DOMが読み込まれた後に初期化
+socket.on('enable-game', () => {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) startButton.disabled = false;
+});
+
+socket.on('unable-game', () => {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) startButton.disabled = true;
+});
+
+socket.on('let-start-game', () => {
+  gameStarted = true;
+  runGameLoop();
+});
+
+socket.on('let-end-game', () => {
+  gameStarted = false;
+  resetGameUI();
+});
+
+function showCorrect() {
+  const correctSound = new Audio('Quiz-Ding_Dong02-1(Fast).mp3');
+  correctSound.onerror = (e) => console.error('正解音の読み込みに失敗:', e);
+  try {
+    correctSound.currentTime = 0;
+    correctSound.play().catch(e => console.error('音声再生エラー:', e));
+  } catch (e) {
+    console.error('音声再生エラー:', e);
+  }
+
+  const duration = 300;
+  const startTime = performance.now();
+  const canvas = document.querySelector('.result-canvas');
+  const context = canvas.getContext('2d');
+
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.beginPath();
+    context.strokeStyle = '#2ecc71';
+    context.lineWidth = 15;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxRadius = Math.min(canvas.width, canvas.height) * 0.2;
+    const currentRadius = Math.max(0, maxRadius * progress);
+    context.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
+    context.stroke();
+    context.shadowBlur = 20;
+    context.shadowColor = '#2ecc71';
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      setTimeout(() => context.clearRect(0, 0, canvas.width, canvas.height), 2000);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function showIncorrect() {
+  const incorrectSound = new Audio('Quiz-Buzzer02-4(Multi).mp3');
+  incorrectSound.onerror = (e) => console.error('不正解音の読み込みに失敗:', e);
+  try {
+    incorrectSound.currentTime = 0;
+    incorrectSound.play().catch(e => console.error('音声再生エラー:', e));
+  } catch (e) {
+    console.error('音声再生エラー:', e);
+  }
+
+  const duration = 300;
+  const startTime = performance.now();
+  const canvas = document.querySelector('.result-canvas');
+  const context = canvas.getContext('2d');
+
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.beginPath();
+    context.strokeStyle = '#e74c3c';
+    context.lineWidth = 15;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxSize = Math.min(canvas.width, canvas.height) * 0.2;
+    const currentSize = Math.max(0, maxSize * progress);
+    context.moveTo(centerX - currentSize, centerY - currentSize);
+    context.lineTo(centerX + currentSize, centerY + currentSize);
+    context.moveTo(centerX + currentSize, centerY - currentSize);
+    context.lineTo(centerX - currentSize, centerY + currentSize);
+    context.shadowBlur = 20;
+    context.shadowColor = '#e74c3c';
+    context.stroke();
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      setTimeout(() => context.clearRect(0, 0, canvas.width, canvas.height), 2000);
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+const onGameStart = () => {
+  const startButton = document.querySelector('.start-button');
+  if (startButton) {
+    startButton.disabled = true;
+    startButton.textContent = "ゲーム終了";
+    startButton.classList.remove("start-button");
+    startButton.classList.add("end-button");
+    startButton.removeEventListener('click', onGameStart);
+    startButton.addEventListener('click', onGameEnd);
+    startButton.disabled = false;
+  }
+  socket.emit('start-game');
+
+  const canvas = document.createElement('canvas');
+  canvas.classList.add("result-canvas");
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.pointerEvents = 'none';
+  document.body.appendChild(canvas);
+
+  function updateCanvasSize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  updateCanvasSize();
+  window.addEventListener('resize', updateCanvasSize);
+};
+
+const runGameLoop = () => {
+  const repeatCount = 10;
+  let currentRepeat = 0;
+
+  const playCountdown = (src) => {
+    return new Promise((resolve, reject) => {
+      const audio = new Audio(src);
+      audio.onended = resolve;
+      audio.onerror = reject;
+      audio.play();
+    });
+  };
+
+  const recordAudio = async (stream, durationMs = 3000) => {
+    const mediaRecorder = new MediaRecorder(stream);
+    const chunks = [];
+    return new Promise((resolve) => {
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: "audio/webm" });
+        resolve(blob);
+      };
+      mediaRecorder.start();
+      setTimeout(() => mediaRecorder.stop(), durationMs);
+    });
+  };
+
+  const matchJudge = async () => {
+    return false;
+  };
+
+  const loopGame = async () => {
+    if (currentRepeat >= repeatCount || !gameStarted) {
+      gameStarted = false;
+      socket.emit('end-game');
+      return;
+    }
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('お使いのブラウザはマイクをサポートしていないか、HTTPSが必要です。');
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await playCountdown('countdown.mp3');
+      const recordedAudio = await recordAudio(stream);
+      const ifMatch = await matchJudge(recordedAudio);
+      if (ifMatch) {
+        showCorrect();
+      } else {
+        showIncorrect();
+      }
+      currentRepeat++;
+      setTimeout(loopGame, 2000);
+    } catch (err) {
+      console.error("エラーが発生しました:", err);
+      alert('マイクの取得に失敗しました。\n' +
+        'HTTPSで接続されているか、マイクの使用を許可しているか確認してください。\n' +
+        'エラー: ' + err.message);
+    }
+  };
+
+  loopGame();
+};
+
+const onGameEnd = () => {
+  gameStarted = false;
+  socket.emit('end-game');
+  resetGameUI();
+};
+
+function resetGameUI() {
+  const endButton = document.querySelector('.end-button');
+  if (endButton) {
+    endButton.textContent = "ゲーム開始";
+    endButton.classList.remove("end-button");
+    endButton.classList.add("start-button");
+    endButton.removeEventListener("click", onGameEnd);
+    endButton.addEventListener("click", onGameStart);
+  }
+  const resultCanvas = document.querySelector(".result-canvas");
+  if (resultCanvas) {
+    resultCanvas.remove();
+  }
+}
+
+let dualSpeechRecognition;
 document.addEventListener('DOMContentLoaded', () => {
   dualSpeechRecognition = new DualSpeechRecognition(socket);
 });
 
-// グローバル関数として公開
 globalThis.startDualRecognition = () => {
   if (dualSpeechRecognition) {
     dualSpeechRecognition.startRecognition();
