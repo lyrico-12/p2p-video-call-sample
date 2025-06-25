@@ -26,6 +26,7 @@ canvas.style.height = '100%';
 canvas.style.pointerEvents = 'none';
 document.body.appendChild(canvas);
 
+//なにもないよ
 // キャンバスのサイズを設定
 function updateCanvasSize() {
   canvas.width = window.innerWidth;
