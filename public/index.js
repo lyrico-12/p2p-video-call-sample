@@ -8,131 +8,6 @@ const pc = new RTCPeerConnection({
 // ソケットIOのクライアント
 const socket = io();
 
-// サウンドエフェクトの設定
-const correctSound = new Audio('Quiz-Ding_Dong02-1(Fast).mp3');
-const incorrectSound = new Audio('Quiz-Buzzer02-4(Multi).mp3');
-
-// エラーハンドリング
-correctSound.onerror = (e) => console.error('正解音の読み込みに失敗:', e);
-incorrectSound.onerror = (e) => console.error('不正解音の読み込みに失敗:', e);
-
-// エフェクト用のキャンバスを作成
-const canvas = document.createElement('canvas');
-const context = canvas.getContext('2d');
-
-// キャンバスのスタイル設定
-canvas.style.position = 'fixed';
-canvas.style.top = '0';
-canvas.style.left = '0';
-canvas.style.width = '100%';
-canvas.style.height = '100%';
-canvas.style.pointerEvents = 'none';
-document.body.appendChild(canvas);
-
-// キャンバスのサイズを設定
-function updateCanvasSize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-updateCanvasSize();
-window.addEventListener('resize', updateCanvasSize);
-
-// 正解エフェクトの表示
-function showCorrect() {
-  try {
-    correctSound.currentTime = 0;
-    correctSound.play().catch(e => console.error('音声再生エラー:', e));
-  } catch (e) {
-    console.error('音声再生エラー:', e);
-  }
-
-  const duration = 300;
-  const startTime = performance.now();
-  
-  function animate(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // 丸を描画
-    context.beginPath();
-    context.strokeStyle = '#2ecc71';
-    context.lineWidth = 15;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const maxRadius = Math.min(canvas.width, canvas.height) * 0.2;
-    const currentRadius = Math.max(0, maxRadius * progress);
-    
-    context.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
-    context.stroke();
-    
-    // 輝く効果
-    context.shadowBlur = 20;
-    context.shadowColor = '#2ecc71';
-    
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      setTimeout(() => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-      }, 2000);
-    }
-  }
-  
-  requestAnimationFrame(animate);
-}
-
-// 不正解エフェクトの表示
-function showIncorrect() {
-  try {
-    incorrectSound.currentTime = 0;
-    incorrectSound.play().catch(e => console.error('音声再生エラー:', e));
-  } catch (e) {
-    console.error('音声再生エラー:', e);
-  }
-
-  const duration = 300;
-  const startTime = performance.now();
-  
-  function animate(currentTime) {
-    const elapsed = currentTime - startTime;
-    const progress = Math.min(elapsed / duration, 1);
-    
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // バツを描画
-    context.beginPath();
-    context.strokeStyle = '#e74c3c';
-    context.lineWidth = 15;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-    const maxSize = Math.min(canvas.width, canvas.height) * 0.2;
-    const currentSize = Math.max(0, maxSize * progress);
-    
-    // バツの線を描画
-    context.moveTo(centerX - currentSize, centerY - currentSize);
-    context.lineTo(centerX + currentSize, centerY + currentSize);
-    context.moveTo(centerX + currentSize, centerY - currentSize);
-    context.lineTo(centerX - currentSize, centerY + currentSize);
-    
-    // 輝く効果
-    context.shadowBlur = 20;
-    context.shadowColor = '#e74c3c';
-    context.stroke();
-    
-    if (progress < 1) {
-      requestAnimationFrame(animate);
-    } else {
-      setTimeout(() => {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-      }, 2000);
-    }
-  }
-  
-  requestAnimationFrame(animate);
-}
-
 // Joinボタンの機能
 globalThis.onClickBtn = async () => {
   try {
@@ -140,40 +15,41 @@ globalThis.onClickBtn = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       throw new Error('お使いのブラウザはカメラ・マイクをサポートしていないか、HTTPSが必要です。');
     }
-  // ブラウザで自分の映像と音声を取得
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: true,
-  });
+    // ブラウザで自分の映像と音声を取得
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: true,
+    });
 
-  // 映像と音声をそれぞれWebRTCの通信対象に含める
-  for (const track of stream.getTracks()) {
-    pc.addTrack(track);
-  }
-  // 自分の映像をhtml要素に埋め込み
-  const videoContainer = document.querySelector('.video-container');
-  const video = document.createElement('video');
-  video.playsInline = true;
-  video.muted = true;
-  video.style.width = '100%';
-  video.srcObject = stream;
-  video.play();
-  videoContainer.appendChild(video);
+    // 映像と音声をそれぞれWebRTCの通信対象に含める
+    for (const track of stream.getTracks()) {
+      pc.addTrack(track);
+    }
+    // 自分の映像をhtml要素に埋め込み
+    const videoContainer = document.querySelector('.video-container');
+    const video = document.createElement('video');
+    video.playsInline = true;
+    video.muted = true;
+    video.style.width = '100%';
+    video.srcObject = stream;
+    video.play();
+    videoContainer.appendChild(video);
 
-  // 「ゲーム開始」ボタンを追加
-  const startButton = document.createElement('button');
-  startButton.textContent = "ゲーム開始";
-  startButton.classList.add("start-button");
-  startButton.addEventListener('click', onGameStart);
-  videoContainer.appendChild(startButton);
+    // 「ゲーム開始」ボタンを追加
+    const startButton = document.createElement('button');
+    startButton.textContent = "ゲーム開始";
+    startButton.classList.add("start-button");
+    startButton.disabled = true;
+    startButton.addEventListener('click', onGameStart);
+    videoContainer.appendChild(startButton);
 
-  // Joinを押したら、'offer'イベントを送信
-  pc.createOffer().then((desc) => {
-    pc.setLocalDescription(desc);
-    socket.emit('offer', desc);
-  });
+    // Joinを押したら、'offer'イベントを送信
+    pc.createOffer().then((desc) => {
+      pc.setLocalDescription(desc);
+      socket.emit('offer', desc);
+    });
 
-  socket.emit('ready');
+    socket.emit('ready');
   } catch (error) {
     console.error('カメラ・マイクの取得に失敗しました:', error);
     alert('カメラ・マイクの取得に失敗しました。\n' + 
@@ -222,9 +98,9 @@ socket.on('offer', (desc) => { // 相手のSDPを受信し('offer'イベント)�
 .on('answer', (desc) => pc.setRemoteDescription(desc)) // こちらがオファーを出した側である場合、'answer'が返ってくるので（上のsocket.emit('answer'...)で'answer'イベントが返ってくるということ）
 .on('ice', (candidate) => pc.addIceCandidate(candidate)); // 'ice'イベントを受信したら、通信経路として設定
 
-let gameStarted;
+let gameStarted = false;
 
-// 2人がゲーム開始ボタンを押した時
+// 2人が通話に参加している時
 socket.on('enable-game', () => {
   const startButton = document.querySelector('.start-button');
   if (startButton) {
@@ -232,7 +108,7 @@ socket.on('enable-game', () => {
   }
 });
 
-// 2人がゲーム開始ボタンを押していない時
+// 自分しかJoinしていない時
 socket.on('unable-game', () => {
   const startButton = document.querySelector('.start-button');
   if (startButton) {
@@ -250,6 +126,110 @@ socket.on('let-end-game', () => {
   resetGameUI();
 })
 
+// 正解エフェクトの表示
+function showCorrect() {
+  const correctSound = new Audio('Quiz-Ding_Dong02-1(Fast).mp3');
+  correctSound.onerror = (e) => console.error('正解音の読み込みに失敗:', e);
+  try {
+    correctSound.currentTime = 0;
+    correctSound.play().catch(e => console.error('音声再生エラー:', e));
+  } catch (e) {
+    console.error('音声再生エラー:', e);
+  }
+
+  const duration = 300;
+  const startTime = performance.now();
+  const canvas = document.querySelector('.result-canvas');
+  const context = canvas.getContext('2d');
+  
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // 丸を描画
+    context.beginPath();
+    context.strokeStyle = '#2ecc71';
+    context.lineWidth = 15;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxRadius = Math.min(canvas.width, canvas.height) * 0.2;
+    const currentRadius = Math.max(0, maxRadius * progress);
+    
+    context.arc(centerX, centerY, currentRadius, 0, Math.PI * 2);
+    context.stroke();
+    
+    // 輝く効果
+    context.shadowBlur = 20;
+    context.shadowColor = '#2ecc71';
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      setTimeout(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }, 2000);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+}
+
+// 不正解エフェクトの表示
+function showIncorrect() {
+  const incorrectSound = new Audio('Quiz-Buzzer02-4(Multi).mp3');
+  incorrectSound.onerror = (e) => console.error('不正解音の読み込みに失敗:', e);
+  try {
+    incorrectSound.currentTime = 0;
+    incorrectSound.play().catch(e => console.error('音声再生エラー:', e));
+  } catch (e) {
+    console.error('音声再生エラー:', e);
+  }
+
+  const duration = 300;
+  const startTime = performance.now();
+  const canvas = document.querySelector('.result-canvas');
+  const context = canvas.getContext('2d');
+  
+  function animate(currentTime) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // バツを描画
+    context.beginPath();
+    context.strokeStyle = '#e74c3c';
+    context.lineWidth = 15;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const maxSize = Math.min(canvas.width, canvas.height) * 0.2;
+    const currentSize = Math.max(0, maxSize * progress);
+    
+    // バツの線を描画
+    context.moveTo(centerX - currentSize, centerY - currentSize);
+    context.lineTo(centerX + currentSize, centerY + currentSize);
+    context.moveTo(centerX + currentSize, centerY - currentSize);
+    context.lineTo(centerX - currentSize, centerY + currentSize);
+    
+    // 輝く効果
+    context.shadowBlur = 20;
+    context.shadowColor = '#e74c3c';
+    context.stroke();
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      setTimeout(() => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+      }, 2000);
+    }
+  }
+  
+  requestAnimationFrame(animate);
+}
+
 // ゲーム開始ボタンを押したら実行
 const onGameStart = () => {
   // ゲーム終了ボタンにする
@@ -266,24 +246,30 @@ const onGameStart = () => {
 
   socket.emit('start-game');
 
-  // 結果を表示する場所だけ作る
-  const resultDisplay = document.createElement("div");
-  resultDisplay.style.position = "absolute";
-  resultDisplay.style.top = "10px";
-  resultDisplay.style.left = "50%";
-  resultDisplay.style.transform = "translateX(-50%)";
-  resultDisplay.style.fontSize = "48px";
-  resultDisplay.style.color = "white";
-  resultDisplay.style.zIndex = 10;
-  resultDisplay.style.display = "none";
-  document.body.appendChild(resultDisplay);
+  // 結果表示キャンバスを作成
+  const canvas = document.createElement('canvas');
+  canvas.classList.add("result-canvas");
+
+  canvas.style.position = 'fixed';
+  canvas.style.top = '0';
+  canvas.style.left = '0';
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
+  canvas.style.pointerEvents = 'none';
+  document.body.appendChild(canvas);
+
+  function updateCanvasSize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  updateCanvasSize();
+  window.addEventListener('resize', updateCanvasSize);
 };
 
+// ゲーム内容
 const runGameLoop = () => {
   const repeatCount = 10;
   let currentRepeat = 0;
-
-  const resultDisplay = document.querySelector('.result-display');
 
   const playCountdown = (src) => {
     return new Promise((resolve, reject) => {
@@ -310,7 +296,7 @@ const runGameLoop = () => {
 
   // ここで一致or不一致の論理値を受けとる
   const matchJudge = async () => {
-    return true;
+    return false;
   };
 
   const loopGame = async () => {
@@ -367,10 +353,9 @@ function resetGameUI() {
     endButton.addEventListener("click", onGameStart);
   }
 
-  const resultDisplay = document.querySelector(".result-display");
-  if (resultDisplay) {
-    resultDisplay.remove();
+  const resultCanvas = document.querySelector(".result-canvas");
+  if (resultCanvas) {
+    resultCanvas.remove();
   }
-  console.log("reset ui");
 }
 

@@ -39,9 +39,9 @@ io.on('connection', (socket) => {
     if (readyUsers.size === 2) {
       io.emit('enable-game');
     } 
-    // else {
-    //   socket.emit('unable-game');
-    // }
+    else {
+      socket.emit('unable-game');
+    }
   })
 
   // ここではゲーム開始ボタンを押した時のイベントを受け取る
@@ -65,7 +65,7 @@ io.on('connection', (socket) => {
   // ゲーム開始ボタンを無効にする
   socket.on('disconnect', () => {
     readyUsers.delete(socket.id);
-    io.emit('not-ready');
+    io.emit('unable-game');
   });
 });
 
