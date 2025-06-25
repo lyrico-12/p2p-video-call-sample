@@ -108,11 +108,20 @@ socket.on('enable-game', () => {
   }
 });
 
-// 自分しかJoinしていない時
+// 自分しかJoinしていない時・相手がdisconnectした時
 socket.on('unable-game', () => {
+  gameStarted = false;
   const startButton = document.querySelector('.start-button');
   if (startButton) {
-    startButton.disabled = true;
+    // 相手がdisconnectした時
+    if (startButton.textContent == "ゲーム終了") {
+      startButton.textContent = "ゲーム開始";
+      startButton.classList.remove("end-button");
+      startButton.classList.add("start-button");
+      startButton.removeEventListener("click", onGameEnd);
+      startButton.addEventListener("click", onGameStart);
+    }
+  startButton.disabled = true;
   }
 });
 
@@ -333,7 +342,6 @@ const runGameLoop = () => {
             'エラー: ' + err.message);
     }
   };
-
   loopGame();
 };
 
