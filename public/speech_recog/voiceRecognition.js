@@ -56,56 +56,11 @@ class VoiceRecognition {
     this.recognition.stop();
   }
 
-  // 手動で確定させるメソッド
-  forceFinalize() {
-    this.recognition.stop();
-    // 少し待ってから再開（連続認識が必要な場合）
-    setTimeout(() => {
-      if (this.recognition.continuous) {
-        this.recognition.start();
-      }
-    }, 100);
-  }
-
   onFinalResult(transcript) {
     console.log('確定結果:', transcript);
-    const finalResultsDiv = document.getElementById('finalResults');
-    if (finalResultsDiv) {
-      finalResultsDiv.innerHTML += `<p>${transcript}</p>`;
-    }
   }
 
-  // onInterimResult(transcript) {
-  //   console.log('途中結果:', transcript);
-  //   const interimResultsDiv = document.getElementById('interimResults');
-  //   if (interimResultsDiv) {
-  //     interimResultsDiv.innerHTML = `<p>認識中: ${transcript}</p>`;
-  //   }
-  // }
-}
-
-// グローバル変数として音声認識インスタンスを作成
-let voiceRecognition;
-
-// ボタンから呼び出される関数
-function startVoiceRecognition() {
-  if (!voiceRecognition) {
-    voiceRecognition = new VoiceRecognition();
-  }
-  voiceRecognition.start();
-  console.log('音声認識を開始しました');
-}
-
-function stopVoiceRecognition() {
-  if (voiceRecognition) {
-    voiceRecognition.stop();
-    console.log('音声認識を停止しました');
-  }
-}
-
-function forceFinalize() {
-  if (voiceRecognition) {
-    voiceRecognition.forceFinalize();
-    console.log('音声認識を手動で確定しました');
+  onInterimResult(transcript) {
+    console.log('途中結果:', transcript);
   }
 }

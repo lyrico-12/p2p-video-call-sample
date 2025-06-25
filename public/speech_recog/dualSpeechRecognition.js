@@ -159,12 +159,6 @@ function startDualRecognition() {
   }
 }
 
-function stopDualRecognition() {
-  if (dualSpeechRecognition) {
-    dualSpeechRecognition.stopRecognition();
-  }
-}
-
 function clearSpeechResults() {
   if (dualSpeechRecognition) {
     dualSpeechRecognition.clearResults();
