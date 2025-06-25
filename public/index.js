@@ -42,6 +42,8 @@ globalThis.onClickBtn = async () => {
     pc.setLocalDescription(desc);
     socket.emit('offer', desc);
   });
+
+  socket.emit('ready');
 };
 
 // 'track'は相手のaddTrackで追加されたトラックが送られてきた時のイベント
@@ -85,58 +87,57 @@ socket.on('offer', (desc) => { // 相手のSDPを受信し('offer'イベント)�
 .on('ice', (candidate) => pc.addIceCandidate(candidate)); // 'ice'イベントを受信したら、通信経路として設定
 
 let gameStarted;
-let isReady = false;
 
-socket.on('both-ready', () => {
+// 2人がゲーム開始ボタンを押した時
+socket.on('enable-game', () => {
   const startButton = document.querySelector('.start-button');
   if (startButton) {
     startButton.disabled = false;
   }
 });
 
-socket.on('not-ready', () => {
+// 2人がゲーム開始ボタンを押していない時
+socket.on('unable-game', () => {
   const startButton = document.querySelector('.start-button');
   if (startButton) {
     startButton.disabled = true;
   }
 });
 
-// シグナリングサーバからゲーム開始イベントを受信
-socket.on('start-game', () => {
+socket.on('let-start-game', () => {
   gameStarted = true;
   runGameLoop();
 });
 
-socket.on('force-end-game', () => {
+socket.on('let-end-game', () => {
   gameStarted = false;
   resetGameUI();
-});
+})
 
 // ゲーム開始ボタンを押したら実行
 const onGameStart = () => {
-  startButton.disabled = true;
+  // ゲーム終了ボタンにする
   const startButton = document.querySelector('.start-button');
   if (startButton) {
+    startButton.disabled = true;
     startButton.textContent = "ゲーム終了";
     startButton.classList.remove("start-button");
     startButton.classList.add("end-button");
     startButton.removeEventListener('click', onGameStart);
     startButton.addEventListener('click', onGameEnd);
+    startButton.disabled = false;
   }
 
-  // 状態をセットし、相手に通知
-  isReady = true;
-  socket.emit('ready');
+  socket.emit('start-game');
 
-  // スタイルだけ表示
+  // 結果を表示する場所だけ作る
   const resultDisplay = document.createElement("div");
   resultDisplay.classList.add('result-display');
   document.body.appendChild(resultDisplay);
 };
 
 const runGameLoop = () => {
-  const targetPhrase = "せーの";
-  const repeatCount = 3;
+  const repeatCount = 10;
   let currentRepeat = 0;
 
   const resultDisplay = document.querySelector('.result-display');
@@ -164,12 +165,17 @@ const runGameLoop = () => {
     });
   };
 
-  const matchJudge = async (audioBlob) => {
-    return "せーの";
+  // ここで一致or不一致の論理値を受けとる
+  const matchJudge = async () => {
+    return true;
   };
 
   const loopGame = async () => {
-    if (currentRepeat >= repeatCount || !gameStarted) return;
+    if (currentRepeat >= repeatCount || !gameStarted) {
+      gameStarted = false;
+      socket.emit('end-game');
+      return;
+    }
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -210,5 +216,6 @@ function resetGameUI() {
   if (resultDisplay) {
     resultDisplay.remove();
   }
+  console.log("reset ui");
 }
 
