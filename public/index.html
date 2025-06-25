@@ -5,24 +5,24 @@
     <script src="./speech_recog/dualSpeechRecognition.js"></script>
     <link rel="stylesheet" type="text/css" href="style.css">
   </head>
-  <body style="display: grid; grid-template-columns: 1fr 1fr;">
+  <body>
     <div class="video-container">
       <button class="my-button" onClick="onClickBtn()">Join</button>
-      <button class="my-button" style="top: 50px;" onClick="startDualRecognition()">デュアル音声認識開始</button>
-      <button class="my-button" style="top: 90px;" onClick="clearSpeechResults()">結果をクリア</button>
+      <button class="my-button dual-recognition-button" onClick="startDualRecognition()">デュアル音声認識開始</button>
+      <button class="my-button clear-results-button" onClick="clearSpeechResults()">結果をクリア</button>
     </div>
 
-    <div id="speechResults" style="position: absolute; z-index: 1; top: 170px; background: white; padding: 15px; max-width: 800px; border: 1px solid #ccc; border-radius: 5px; display: block;">
-      <h3 style="margin-top: 0;">音声認識結果</h3>
-      <div style="display: flex; gap: 20px; margin-bottom: 10px;">
-        <div style="flex: 1;">
-          <h4 style="color: blue; margin: 10px 0;">あなたの音声</h4>
-          <div id="localResults" style="height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;"></div>
+    <div id="speechResults">
+      <h3>音声認識結果</h3>
+      <div class="speech-results-container">
+        <div class="speech-section">
+          <h4 class="local-speech-title">あなたの音声</h4>
+          <div id="localResults" class="speech-results-area"></div>
         </div>
-        <div style="flex: 1;">
-          <h4 style="color: red; margin: 10px 0;">相手の音声</h4>
-          <div id="remoteResults" style="height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; background: #f9f9f9;"></div>
-          <div id="remoteStatus" style="display: none; color: orange; font-style: italic; margin-top: 5px;"></div>
+        <div class="speech-section">
+          <h4 class="remote-speech-title">相手の音声</h4>
+          <div id="remoteResults" class="speech-results-area"></div>
+          <div id="remoteStatus"></div>
         </div>
       </div>
     </div>
