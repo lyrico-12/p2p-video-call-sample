@@ -16,14 +16,9 @@ body {
   position: relative;
 }
 
-/* 音声認識開始ボタンの位置 */
-.dual-recognition-button {
-  top: 50px;
-}
-
 /* 結果クリアボタンの位置 */
 .clear-results-button {
-  top: 90px;
+  top: 50px;
 }
 
 /* 音声認識結果コンテナ */

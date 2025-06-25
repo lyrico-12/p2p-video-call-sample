@@ -3,6 +3,8 @@ class DualSpeechRecognition {
     this.socket = socket;
     this.localRecognition = new VoiceRecognition();
     this.isRecognitionActive = false;
+    this.latestLocalTranscript = '';
+    this.latestRemoteTranscript = '';
     this.setupSocketEvents();
     this.setupLocalRecognition();
   }
@@ -10,6 +12,7 @@ class DualSpeechRecognition {
   setupSocketEvents() {
     // 相手の音声認識結果を受信
     this.socket.on('remote-speech-result', (data) => {
+      this.latestRemoteTranscript = data.transcript;
       this.displayRemoteResult(data.transcript, data.playerId);
     });
 
@@ -29,6 +32,9 @@ class DualSpeechRecognition {
 
   setupLocalRecognition() {
     this.localRecognition.onFinalResult = (transcript) => {
+      // 最新のローカル音声認識結果を保存
+      this.latestLocalTranscript = transcript;
+      
       // ローカル表示
       this.displayLocalResult(transcript);
       
@@ -146,6 +152,50 @@ class DualSpeechRecognition {
     
     if (localDiv) localDiv.innerHTML = '';
     if (remoteDiv) remoteDiv.innerHTML = '';
+    
+    // 保存された音声認識結果もクリア
+    this.latestLocalTranscript = '';
+    this.latestRemoteTranscript = '';
+  }
+
+  // 最新の音声認識結果を比較するメソッド
+  compareLatestTranscripts() {
+    if (!this.latestLocalTranscript || !this.latestRemoteTranscript) {
+      console.log('比較するための音声認識結果が不足しています');
+      console.log('あなた:', this.latestLocalTranscript);
+      console.log('相手:', this.latestRemoteTranscript);
+      return false;
+    }
+
+    // 文字列を正規化（ひらがな・カタカナ統一、空白削除、小文字化）
+    const normalizeText = (text) => {
+      return text
+        .replace(/\s+/g, '') // 空白を削除
+        .toLowerCase() // 小文字化
+        .replace(/[ァ-ヴ]/g, (match) => { // カタカナをひらがなに変換
+          return String.fromCharCode(match.charCodeAt(0) - 0x60);
+        });
+    };
+
+    const normalizedLocal = normalizeText(this.latestLocalTranscript);
+    const normalizedRemote = normalizeText(this.latestRemoteTranscript);
+
+    console.log('音声認識結果比較:');
+    console.log('あなた:', this.latestLocalTranscript, '→正規化:', normalizedLocal);
+    console.log('相手:', this.latestRemoteTranscript, '→正規化:', normalizedRemote);
+
+    const isMatch = normalizedLocal === normalizedRemote;
+    console.log('一致判定:', isMatch);
+
+    return isMatch;
+  }
+
+  // 最新の音声認識結果を取得するメソッド
+  getLatestTranscripts() {
+    return {
+      local: this.latestLocalTranscript,
+      remote: this.latestRemoteTranscript
+    };
   }
 }
 
@@ -163,4 +213,20 @@ function clearSpeechResults() {
   if (dualSpeechRecognition) {
     dualSpeechRecognition.clearResults();
   }
+}
+
+// 音声認識結果を比較するグローバル関数
+function compareSpeechResults() {
+  if (dualSpeechRecognition) {
+    return dualSpeechRecognition.compareLatestTranscripts();
+  }
+  return false;
+}
+
+// 最新の音声認識結果を取得するグローバル関数
+function getLatestSpeechResults() {
+  if (dualSpeechRecognition) {
+    return dualSpeechRecognition.getLatestTranscripts();
+  }
+  return { local: '', remote: '' };
 }

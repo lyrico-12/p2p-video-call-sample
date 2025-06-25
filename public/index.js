@@ -201,6 +201,12 @@ const onGameStart = () => {
     startButton.addEventListener('click', onGameEnd);
     startButton.disabled = false;
   }
+  
+  // 音声認識を開始
+  if (dualSpeechRecognition) {
+    dualSpeechRecognition.startRecognition();
+  }
+  
   socket.emit('start-game');
 
   const canvas = document.createElement('canvas');
@@ -222,9 +228,6 @@ const onGameStart = () => {
 };
 
 const runGameLoop = () => {
-  const repeatCount = 10;
-  let currentRepeat = 0;
-
   const playCountdown = (src) => {
     return new Promise((resolve, reject) => {
       const audio = new Audio(src);
@@ -234,58 +237,106 @@ const runGameLoop = () => {
     });
   };
 
-  const recordAudio = async (stream, durationMs = 3000) => {
-    const mediaRecorder = new MediaRecorder(stream);
-    const chunks = [];
-    return new Promise((resolve) => {
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: "audio/webm" });
-        resolve(blob);
-      };
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), durationMs);
-    });
-  };
-
   const matchJudge = async () => {
-    return false;
+    // 音声認識結果を比較
+    if (typeof compareSpeechResults === 'function') {
+      const isMatch = compareSpeechResults();
+      const results = getLatestSpeechResults();
+      
+      console.log('matchJudge - 音声認識結果比較:');
+      console.log('あなた:', results.local);
+      console.log('相手:', results.remote);
+      console.log('一致判定:', isMatch);
+      
+      return isMatch;
+    } else {
+      console.warn('compareSpeechResults関数が見つかりません');
+      return false;
+    }
   };
 
-  const loopGame = async () => {
-    if (currentRepeat >= repeatCount || !gameStarted) {
+  const runSingleRound = async () => {
+    if (!gameStarted) {
       gameStarted = false;
       socket.emit('end-game');
       return;
     }
+    
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('お使いのブラウザはマイクをサポートしていないか、HTTPSが必要です。');
+      console.log('ゲーム開始 - 1ラウンド');
+      
+      // 音声認識結果をクリア
+      if (dualSpeechRecognition) {
+        dualSpeechRecognition.latestLocalTranscript = '';
+        dualSpeechRecognition.latestRemoteTranscript = '';
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      
+      // カウントダウン音を再生
       await playCountdown('countdown.mp3');
-      const recordedAudio = await recordAudio(stream);
-      const ifMatch = await matchJudge(recordedAudio);
+      
+      // 音声認識が完了するまで待機（最大5秒）
+      const waitForSpeechResults = () => {
+        return new Promise((resolve) => {
+          let waitTime = 0;
+          const maxWaitTime = 5000; // 5秒間待機
+          const checkInterval = 100; // 100msごとにチェック
+          
+          const checkResults = () => {
+            const results = getLatestSpeechResults();
+            if (results.local && results.remote) {
+              console.log('両方の音声認識結果が揃いました');
+              resolve();
+            } else if (waitTime >= maxWaitTime) {
+              console.log('タイムアウト: 音声認識結果が揃いませんでした');
+              resolve();
+            } else {
+              waitTime += checkInterval;
+              setTimeout(checkResults, checkInterval);
+            }
+          };
+          
+          checkResults();
+        });
+      };
+      
+      await waitForSpeechResults();
+      
+      // 判定を実行
+      const ifMatch = await matchJudge();
+      console.log('判定結果:', ifMatch);
+      
       if (ifMatch) {
         showCorrect();
       } else {
         showIncorrect();
       }
-      currentRepeat++;
-      setTimeout(loopGame, 2000);
+      
+      // ゲーム終了
+      setTimeout(() => {
+        gameStarted = false;
+        socket.emit('end-game');
+      }, 3000); // 3秒後にゲーム終了
+      
     } catch (err) {
       console.error("エラーが発生しました:", err);
-      alert('マイクの取得に失敗しました。\n' +
-        'HTTPSで接続されているか、マイクの使用を許可しているか確認してください。\n' +
+      alert('ゲーム実行中にエラーが発生しました。\n' +
         'エラー: ' + err.message);
+      gameStarted = false;
+      socket.emit('end-game');
     }
   };
 
-  loopGame();
+  runSingleRound();
 };
 
 const onGameEnd = () => {
   gameStarted = false;
+  
+  // 音声認識を停止
+  if (dualSpeechRecognition) {
+    dualSpeechRecognition.stopRecognition();
+  }
+  
   socket.emit('end-game');
   resetGameUI();
 };
