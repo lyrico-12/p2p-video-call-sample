@@ -35,6 +35,16 @@ globalThis.onClickBtn = async () => {
     video.play();
     videoContainer.appendChild(video);
 
+    const canvas = document.createElement('canvas');
+    canvas.classList.add("result-canvas");
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    document.body.appendChild(canvas);
+
     // 「ゲーム開始」ボタンを追加
     const startButton = document.createElement('button');
     startButton.textContent = "ゲーム開始";
@@ -256,16 +266,7 @@ const onGameStart = () => {
   socket.emit('start-game');
 
   // 結果表示キャンバスを作成
-  const canvas = document.createElement('canvas');
-  canvas.classList.add("result-canvas");
-
-  canvas.style.position = 'fixed';
-  canvas.style.top = '0';
-  canvas.style.left = '0';
-  canvas.style.width = '100%';
-  canvas.style.height = '100%';
-  canvas.style.pointerEvents = 'none';
-  document.body.appendChild(canvas);
+  const canvas = document.querySelector('.result-canvas');
 
   function updateCanvasSize() {
     canvas.width = window.innerWidth;
@@ -361,9 +362,9 @@ function resetGameUI() {
     endButton.addEventListener("click", onGameStart);
   }
 
-  const resultCanvas = document.querySelector(".result-canvas");
-  if (resultCanvas) {
-    resultCanvas.remove();
-  }
+  // const resultCanvas = document.querySelector(".result-canvas");
+  // if (resultCanvas) {
+  //   resultCanvas.remove();
+  // }
 }
 
